@@ -1,5 +1,3 @@
-'use client';
-
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Content, fetchContents } from '@/lib/api';
 
@@ -56,12 +54,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setOffset(0);
     try {
       console.log(`🔍 [ContentContext] Loading contents: tab=${tab}, search=${search}`);
-      const response = await fetchContents({
-        contentType: tab,
-        search: search,
-        limit: 24,
-        offset: 0
-      });
+      const response = await fetchContents(tab, search, 24, 0);
       const data = response.data || [];
       
       console.log(`✅ [ContentContext] Loaded ${data.length} items, hasMore=${response.hasMore}`);
@@ -90,12 +83,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLoading(true);
     try {
       console.log(`🔍 [ContentContext] Loading more contents: tab=${activeTab}, search=${searchQuery}, offset=${offset}`);
-      const response = await fetchContents({
-        contentType: activeTab,
-        search: searchQuery,
-        limit: 24,
-        offset: offset
-      });
+      const response = await fetchContents(activeTab, searchQuery, 24, offset);
       const data = response.data || [];
       
       console.log(`✅ [ContentContext] Loaded ${data.length} more items, hasMore=${response.hasMore}`);
