@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Content } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,18 +29,47 @@ export default function HomePage() {
     loading,
     activeTab,
     searchQuery,
+    hasMore,
     setActiveTab,
     setSearchQuery,
     loadContents,
+    loadMoreContents,
   } = useContentContext();
   
   const [requestTitle, setRequestTitle] = useState('');
   const [requestVariant, setRequestVariant] = useState('');
   const { toast } = useToast();
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadContents(activeTab, searchQuery);
   }, [activeTab, searchQuery, loadContents]);
+
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          loadMoreContents();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasMore, loading, loadMoreContents]);
 
   const handleRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,107 +126,26 @@ export default function HomePage() {
             <p className="mt-4 text-muted-foreground">Loading content...</p>
           </div>
         ) : contents.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {contents.map((content) => (
-              <Link key={content.id} href={`/content/${content.id}`}>
-                <Card 
-                  className="group overflow-hidden border-[1.5px] border-border hover:border-orange-500 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 cursor-pointer rounded-xl"
-                >
-                {/* Cover Image */}
-                <div className="relative aspect-[2/3] overflow-hidden bg-muted">
-                  {content.cover_image_url ? (
-                    <img
-                      src={content.cover_image_url}
-                      alt={content.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-4xl">📚</span>
-                    </div>
-                  )}
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  
-                  {/* Status Badge */}
-                  <Badge 
-                    className="absolute top-2 right-2 text-xs font-bold flex items-center justify-center bg-orange-500 text-white border-0"
-                    variant={
-                      content.status === 'ongoing' ? 'default' :
-                      content.status === 'completed' ? 'secondary' :
-                      'outline'
-                    }
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {contents.map((content) => (
+                <Link key={content.id} href={`/content/${content.id}`}>
+                  <Card 
+                    className="group overflow-hidden border-[1.5px] border-border hover:border-orange-500 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20 cursor-pointer rounded-xl"
                   >
-                    {content.status}
-                  </Badge>
-
-                  {/* Type Badge */}
-                  <Badge 
-                    variant="secondary"
-                    className="absolute top-2 left-2 text-xs font-bold uppercase bg-gray-900/90 text-white border-0"
-                  >
-                    {content.type}
-                  </Badge>
-
-                  {/* Rating */}
-                  {content.average_rating && content.average_rating > 0 && (
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-sm border-0">
-                      <Star className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
-                      <span className="text-white text-xs font-bold">
-                        {content.average_rating.toFixed(1)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Chapter Count */}
-                  {content.chapter_count && content.chapter_count > 0 && (
-                    <div className="absolute bottom-2 right-2 flex items-center justify-center">
-                      <div className="flex px-1 py-0.5 rounded-full bg-orange-500/90 backdrop-blur-sm border-0">
-                        <span className="text-white text-[10px] font-bold whitespace-nowrap px-1 py-1 ">
-                          CH {content.chapter_count}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Content Info */}
-                <CardContent className="p-4 bg-gradient-to-b from-card to-card/80">
-                  <h3 className="font-bold text-sm mb-2 line-clamp-2 text-foreground group-hover:text-orange-500 transition-colors duration-300">
-                    {content.title}
-                  </h3>
-                  
-                  {content.author && (
-                    <p className="text-xs text-muted-foreground mb-3">
-                      {content.author}
-                    </p>
-                  )}
-                  
-                  {/* Genres */}
-                  {content.genres && content.genres.length > 0 && (
-                    <div className="flex flex-wrap gap-2 items-center">
-                      {content.genres.slice(0, 2).map((genre: string, idx: number) => (
-                        <Badge 
-                          key={idx}
-                          variant="outline"
-                          className="text-xs px-2 py-1 whitespace-nowrap border-orange-500/50 text-foreground hover:bg-orange-500/10 transition-colors"
-                        >
-                          {genre}
-                        </Badge>
-                      ))}
-                      {content.genres.length > 2 && (
-                        <Badge variant="outline" className="text-xs px-2 py-1 whitespace-nowrap border-orange-500/50 text-foreground">
-                          +{content.genres.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              </Link>
-            ))}
-          </div>
+...
+                  </Card>
+                </Link>
+              ))}
+            </div>
+            
+            {/* Infinite scroll trigger */}
+            <div ref={loadMoreRef} className="flex justify-center py-8">
+              {hasMore && loading && (
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+              )}
+            </div>
+          </>
         ) : (
           <div className="text-center py-20">
             <div className="mb-4">

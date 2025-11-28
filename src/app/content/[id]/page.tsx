@@ -10,7 +10,7 @@ import { ArrowLeft, Star, BookOpen, ChevronRight } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { useToast } from '@/hooks/use-toast';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export default function ContentDetailPage({ params }: { params: { id: string } }) {
   const { toast } = useToast();
