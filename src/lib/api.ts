@@ -102,9 +102,15 @@ const mockContents: Content[] = [
     },
 ];
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-export async function fetchContents(params: FetchContentsParams): Promise<{ data: Content[] }> {
+interface FetchContentsResult {
+    data: Content[];
+    hasMore?: boolean;
+    total?: number;
+}
+
+export async function fetchContents(params: FetchContentsParams & { offset?: number }): Promise<FetchContentsResult> {
     try {
         const queryParams = new URLSearchParams();
         if (params.contentType && params.contentType !== 'all') {
@@ -115,6 +121,9 @@ export async function fetchContents(params: FetchContentsParams): Promise<{ data
         }
         if (params.limit) {
             queryParams.append('limit', params.limit.toString());
+        }
+        if (params.offset !== undefined) {
+            queryParams.append('offset', params.offset.toString());
         }
 
         console.log(`📡 [API] Fetching contents: ${API_BASE_URL}/content?${queryParams.toString()}`);
@@ -127,32 +136,13 @@ export async function fetchContents(params: FetchContentsParams): Promise<{ data
 
         const result = await response.json();
         console.log(`✅ [API] Successfully fetched ${result.data?.length || 0} contents`);
-        return { data: result.data || [] };
+        return { 
+            data: result.data || [], 
+            hasMore: result.hasMore,
+            total: result.total 
+        };
     } catch (error: any) {
         console.error(`❌ [API] Error fetching contents:`, error);
-        console.log(`⚠️ [API] Using mock data as fallback`);
-        
-        // Fallback to mock data if API is unavailable
-        let filtered = [...mockContents];
-
-        if (params.contentType && params.contentType !== 'all') {
-            filtered = filtered.filter(content => content.type === params.contentType);
-        }
-
-        if (params.search) {
-            const query = params.search.toLowerCase();
-            filtered = filtered.filter(content =>
-                content.title.toLowerCase().includes(query) ||
-                content.author?.toLowerCase().includes(query) ||
-                content.genres?.some(genre => genre.toLowerCase().includes(query))
-            );
-        }
-
-        if (params.limit) {
-            filtered = filtered.slice(0, params.limit);
-        }
-
-        console.log(`📦 [API] Returning ${filtered.length} mock items`);
-        return { data: filtered };
+        return { data: [], hasMore: false, total: 0 };
     }
 }
